@@ -73,9 +73,10 @@ cmd_list() {
   fi
   local row p n e pl act exp
   printf '%-7s %-16s %-32s %-10s %s\n' PROVIDER NAME EMAIL PLAN ACTIVE
-  $AS_JQ -r '.[] | [.provider, .name, (.email // "-"), (.plan // "-"), (if .active then "*" else "" end), (.refreshExpiresAt // "" | tostring)] | @tsv' <<< $entries |
-  while IFS=$'\t' read -r p n e pl act exp; do
-    printf '%-7s %-16s %-32s %-10s %s\n' $p $n $e $pl $act
+  # Fields joined by \x1f, not tabs: `read` merges runs of tabs, which drops the empty ACTIVE field.
+  $AS_JQ -r '.[] | [.provider, .name, (.email // "-"), (.plan // "-"), (if .active then "*" else "" end), (.refreshExpiresAt // "" | tostring)] | join("\u001f")' <<< $entries |
+  while IFS=$'\x1f' read -r p n e pl act exp; do
+    printf '%-7s %-16s %-32s %-10s %s\n' "$p" "$n" "$e" "$pl" "$act"
     [[ $p == claude && -n $exp ]] && printf '        refresh expiry (as recorded by Claude): %s\n' "$(as_fmt_ms_date $exp)"
   done
   print -r -- "

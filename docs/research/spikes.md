@@ -4,7 +4,7 @@ Machine: macOS 26.5.2 (25F84), Claude Code 2.1.305, Codex 0.163.0.
 
 | Id | What | Status |
 |---|---|---|
-| S1 | `CLAUDE_CONFIG_DIR=<tmp> claude auth login` writes only the temp keychain item + temp `.claude.json`; live login untouched | pending (needs a browser login) |
+| S1 | `CLAUDE_CONFIG_DIR=<tmp> claude auth login` writes only the temp keychain item + temp `.claude.json`; live login untouched | **passed 2026-10-21** |
 | S2 | Running Claude chat picks up a swapped keychain login on its next message after ≥30 s, with no re-login prompt, same transcript | pending |
 | S3 | `CODEX_HOME=<tmp> codex login` writes only `<tmp>/auth.json`; live `~/.codex/auth.json` untouched | **passed 2026-10-21** |
 | S4 | `auth-swap use codex B` from a terminal: open TUI reconnects, `/status` shows B, next turn served | **passed 2026-10-21** |
@@ -35,5 +35,11 @@ Run by the user with a Codex window open: `auth-swap use codex second`, then `au
 - Switching back to `main` worked, so leaving an account does not revoke it.
 - Daemon running on 0.163.0 afterwards.
 
-## S1, S2 — not run
-The user has one Claude account, so there is no second account to log in to or switch to. Claude switching stays unverified on real accounts until someone with two Claude accounts runs S1/S2.
+## S1 — Claude temp login (passed, 2026-10-21)
+Run by the user: `auth-swap login claude second` (12:19:39Z, a second Claude Max account in the browser), then `auth-swap use claude second` (12:21:11Z).
+- The login printed "Login successful." and saved `second` with its own email and refresh expiry.
+- The live login was still `main` after it: `use` found the live account, matched it to `main` and saved it back (`main` updatedAt 12:21:11Z) instead of refusing it as unsaved.
+- Still 4 `Claude Code-credentials*` items afterwards (the temp item was deleted) and no `auth-swap.*` temp folder left. An earlier attempt that ended with "claude auth login did not finish" also left nothing behind.
+
+## S2 — not yet confirmed
+After the switch above, the Claude Code chat that was already open kept answering in the same transcript. Still to confirm: `/status` in that chat shows the new account.

@@ -82,6 +82,8 @@ test_list_marks_active() {
   assert_eq "$(jq -r '.[0] | has("identity")' <<< $out)" false
   txt=$(as list)
   assert_contains "$txt" "refresh expiry (as recorded by Claude): 2025-10-29"
+  assert_eq "$(grep -c "refresh expiry" <<< $txt)" 2 "an expiry line for every Claude login"
+  [[ $(grep "^claude  *b " <<< $txt) != *[0-9][0-9][0-9][0-9][0-9]* ]] || fail "raw timestamp in the ACTIVE column"
 }
 
 test_use_refuses_unsaved_live_login_unless_no_save() {
