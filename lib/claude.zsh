@@ -1,5 +1,4 @@
-# auth-swap — Claude Code. Every rule here mirrors Claude Code 2.1.305;
-# see docs/research/claude-code-2.1.305.md for the byte offsets behind each one.
+# auth-swap — Claude Code. Every rule here mirrors Claude Code 2.1.305 (checked against its binary).
 
 typeset -g AS_CLAUDE=${AUTH_SWAP_CLAUDE:-claude}
 typeset -g CLAUDE_KC_SERVICE="Claude Code-credentials"

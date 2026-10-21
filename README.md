@@ -201,7 +201,7 @@ auth-swap: the Claude account you're logged into now (me@example.com) is already
 | Saved logins | Keychain items with service `auth-swap` | `~/.auth-swap/codex/<name>.auth.json` (mode 0600) |
 | Switch | Takes Claude Code's own lock files and rewrites only the login fields its own login writes. Other keychain data (such as MCP logins) and settings are kept; per-account caches are cleared the way Claude's login clears them. | Stops the shared daemon (`codex app-server daemon stop`), swaps `auth.json`, starts it again. |
 
-`~/.auth-swap/accounts.json` lists names, emails and plans only, with no tokens. Every rule above was checked against the Claude Code binary and the Codex source. The notes and citations are in [`docs/research/`](docs/research/).
+`~/.auth-swap/accounts.json` lists names, emails and plans only, with no tokens. Every rule above was checked against the Claude Code 2.1.305 binary and the Codex 0.163.0 source.
 
 ## Limitations
 
@@ -209,7 +209,7 @@ auth-swap: the Claude account you're logged into now (me@example.com) is already
 - A Codex window running without the shared daemon (`--no-daemon`) can't be switched. Restart it after switching.
 - The Codex daemon that auth-swap restarts keeps the environment of the shell you ran `auth-swap` from (PATH, proxy settings and so on).
 - Saved logins left unused for a long time may expire on the server. If a switch stops working, run `auth-swap login` again. `list` shows the refresh-expiry date Claude recorded.
-- Some behaviour is still being confirmed on real accounts; see [`docs/research/spikes.md`](docs/research/spikes.md).
+- Not yet confirmed on real accounts: that `/status` in an already-open Claude Code chat shows the new account after a switch. The chat itself keeps working.
 
 ## Uninstall
 
@@ -232,7 +232,6 @@ The tests never touch your real keychain, `~/.claude` or `~/.codex`.
 | `bin/auth-swap` | CLI entry point |
 | `lib/` | shared helpers, vault, Claude and Codex flows |
 | `tests/` | test runner, stubs for `security`, `claude` and `codex` |
-| `docs/research/` | verified behaviour of Claude Code and Codex, with citations |
 
 Issues and pull requests are welcome. Please run the tests before opening a pull request.
 

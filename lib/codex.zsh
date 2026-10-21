@@ -1,5 +1,4 @@
-# auth-swap — Codex CLI. Every rule here mirrors Codex 0.163.0;
-# see docs/research/codex-0.163.0.md for the source lines behind each one.
+# auth-swap — Codex CLI. Every rule here mirrors Codex 0.163.0 (checked against its source).
 
 typeset -g AS_CODEX=${AUTH_SWAP_CODEX:-codex}
 typeset -gi AS_CODEX_RESTART=0

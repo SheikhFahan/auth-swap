@@ -1,5 +1,5 @@
 # auth-swap — shared helpers. Sourced by bin/auth-swap; zsh only.
-# Uses only tools shipped with macOS (see docs/research and README "Requirements").
+# Uses only tools shipped with macOS (see README "Requirements").
 
 typeset -g AS_JQ=${AUTH_SWAP_JQ:-/usr/bin/jq}
 typeset -g AS_SECURITY=${AUTH_SWAP_SECURITY:-/usr/bin/security}
@@ -89,11 +89,11 @@ as_run_cleanup() {
 
 # ---- keychain (generic passwords), written the way Claude Code writes them ----
 # Values go through `security -i` on stdin when the whole command is <= 4032
-# chars (longer lines get split and store a truncated value — docs/research/spikes.md S6),
+# chars (longer lines get split and store a truncated value; seen on macOS 26.5),
 # otherwise through argv.
 
 as_kc_read() { # <service> <account>  -> secret on stdout; returns security's exit code (44 = not found)
-  # `security -w` prints a value holding non-ASCII bytes as hex (spikes.md S6b); our
+  # `security -w` prints a value holding non-ASCII bytes as hex (seen on macOS 26.5); our
   # values are JSON objects, which never look like hex, so decode that form back.
   local out rc
   out=$($AS_SECURITY find-generic-password -a $2 -s $1 -w 2>/dev/null) || { rc=$?; return $rc }
@@ -104,8 +104,6 @@ as_kc_read() { # <service> <account>  -> secret on stdout; returns security's ex
     print -r -- $out
   fi
 }
-
-as_kc_exists() { $AS_SECURITY find-generic-password -a $2 -s $1 >/dev/null 2>&1 }
 
 as_kc_write() { # <service> <account> <value>
   local svc=$1 acct=$2 hex cmd
