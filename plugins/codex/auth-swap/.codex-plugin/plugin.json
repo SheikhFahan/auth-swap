@@ -1,0 +1,13 @@
+{
+  "name": "auth-swap",
+  "version": "0.1.0",
+  "description": "List saved Codex logins and switch the Codex account without logging out, keeping the same chat.",
+  "keywords": ["login", "account", "usage limit"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "auth-swap",
+    "shortDescription": "Switch between saved Codex logins",
+    "developerName": "auth-swap",
+    "category": "Developer Tools"
+  }
+}

@@ -1,0 +1,54 @@
+#!/bin/zsh -f
+# Fake /usr/bin/security for tests: generic passwords stored as files under $STUB_KC.
+# Supports find-/add-/delete-generic-password and `-i` (commands on stdin).
+emulate -R zsh
+: ${STUB_KC:?STUB_KC not set}
+mkdir -p $STUB_KC
+
+item_file() { print -r -- $STUB_KC/$(print -rn -- "$1|$2" | /usr/bin/shasum -a 256 | cut -c1-16) }
+
+run() {
+  local op=$1; shift
+  local acct= svc= hex= show=0
+  while (( $# )); do
+    case $1 in
+      -a) acct=$2; shift 2 ;;
+      -s) svc=$2; shift 2 ;;
+      -X) hex=$2; shift 2 ;;
+      -w) show=1; shift ;;
+      -U) shift ;;
+      *) print -ru2 "stub security: unknown arg $1"; return 2 ;;
+    esac
+  done
+  local f=$(item_file $svc $acct)
+  case $op in
+    find-generic-password)
+      [[ -f $f ]] || return 44
+      if (( show )); then
+        # like the real tool: a value with bytes outside printable ASCII comes out as hex
+        if LC_ALL=C /usr/bin/grep -q '[^ -~]' $f; then /usr/bin/xxd -p $f | tr -d '\n'; print; else cat $f; print; fi
+      else
+        print -r -- "keychain: \"stub\"\n    \"svce\"<blob>=\"$svc\""
+      fi ;;
+    add-generic-password)
+      print -rn -- $hex | /usr/bin/xxd -r -p > $f
+      print -r -- "$svc|$acct" > $f.name ;;
+    delete-generic-password)
+      [[ -f $f ]] || return 44
+      rm -f $f $f.name ;;
+    *) print -ru2 "stub security: unsupported $op"; return 2 ;;
+  esac
+}
+
+if [[ ${1:-} == -i ]]; then
+  local line rc=0
+  while IFS= read -r line; do
+    print -r -- ${#line} >> $STUB_KC/.stdin-lengths
+    (( ${#line} <= 4032 )) || { print -ru2 "stub security: stdin line longer than 4032"; rc=1; continue }
+    local -a words=(${(Q)${(z)line}})
+    run $words || rc=$?
+  done
+  exit $rc
+fi
+print -r -- "argv" >> $STUB_KC/.argv-calls
+run "$@"

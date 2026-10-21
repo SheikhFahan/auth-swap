@@ -1,0 +1,19 @@
+#!/bin/zsh -f
+# Fake `claude` for tests. `claude auth login` writes the login the way Claude Code
+# does when CLAUDE_CONFIG_DIR is set: keychain item "Claude Code-credentials-<sha8>"
+# plus $CLAUDE_CONFIG_DIR/.claude.json with oauthAccount.
+# Inputs: STUB_CLAUDE_BLOB, STUB_CLAUDE_OA (JSON); log in $STUB_LOG.
+emulate -R zsh
+case "${1:-} ${2:-}" in
+  "--version "*) print -r -- "2.1.305 (Claude Code)"; exit 0 ;;
+  "auth login")
+    print -r -- "claude auth login args=${(j: :)argv[3,-1]} CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN-unset} CLAUDE_SECURESTORAGE_CONFIG_DIR=${CLAUDE_SECURESTORAGE_CONFIG_DIR-unset}" >> $STUB_LOG
+    [[ -n ${CLAUDE_CONFIG_DIR:-} ]] || { print -ru2 "stub claude: CLAUDE_CONFIG_DIR not set"; exit 1 }
+    [[ ${STUB_CLAUDE_FAIL:-0} == 1 ]] && exit 1
+    sha=$(print -rn -- $CLAUDE_CONFIG_DIR | /usr/bin/shasum -a 256 | cut -c1-8)
+    hex=$(print -rn -- $STUB_CLAUDE_BLOB | /usr/bin/xxd -p | tr -d '\n')
+    $AUTH_SWAP_SECURITY add-generic-password -U -a $USER -s "Claude Code-credentials-$sha" -X $hex
+    /usr/bin/jq -n --argjson oa $STUB_CLAUDE_OA '{oauthAccount: $oa, numStartups: 1}' > $CLAUDE_CONFIG_DIR/.claude.json
+    exit 0 ;;
+esac
+print -ru2 "stub claude: unsupported: $*"; exit 2

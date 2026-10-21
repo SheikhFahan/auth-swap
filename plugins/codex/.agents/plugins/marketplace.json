@@ -1,0 +1,12 @@
+{
+  "name": "auth-swap",
+  "interface": { "displayName": "auth-swap" },
+  "plugins": [
+    {
+      "name": "auth-swap",
+      "source": { "source": "local", "path": "./auth-swap" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Developer Tools"
+    }
+  ]
+}

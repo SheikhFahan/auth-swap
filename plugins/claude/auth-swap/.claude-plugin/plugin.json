@@ -1,0 +1,6 @@
+{
+  "name": "auth-swap",
+  "version": "0.1.0",
+  "description": "/auth-swap lists your saved Claude Code and Codex logins and switches between them, keeping the same chat.",
+  "author": { "name": "auth-swap" }
+}

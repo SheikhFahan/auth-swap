@@ -1,0 +1,30 @@
+#!/bin/zsh -f
+# Fake `codex` for tests.
+#   codex login                    writes $CODEX_HOME/auth.json from $STUB_CODEX_AUTH
+#   codex app-server daemon ...    version/stop/start against $STUB_DAEMON_STATE; logged to $STUB_LOG
+emulate -R zsh
+case "${1:-}" in
+  --version) print -r -- "codex-cli 0.163.0"; exit 0 ;;
+  login)
+    print -r -- "codex login args=${(j: :)argv[2,-1]} CODEX_HOME=${CODEX_HOME-unset}" >> $STUB_LOG
+    [[ -n ${CODEX_HOME:-} ]] || { print -ru2 "stub codex: CODEX_HOME not set"; exit 1 }
+    print -r -- $STUB_CODEX_AUTH > $CODEX_HOME/auth.json
+    exit 0 ;;
+  app-server)
+    [[ ${2:-} == daemon ]] || exit 2
+    state=$(cat $STUB_DAEMON_STATE 2>/dev/null || print stopped)
+    case ${3:-} in
+      version) print -r -- "{\"status\":\"$state\"}" ;;
+      stop) print -r -- stopped > $STUB_DAEMON_STATE; print -r -- "daemon stop" >> $STUB_LOG; print '{}' ;;
+      start)
+        print -r -- running > $STUB_DAEMON_STATE
+        # record which account the daemon would load at start
+        email=$(/usr/bin/jq -r '.tokens.id_token' $HOME/.codex/auth.json 2>/dev/null | cut -d. -f2 | tr '_-' '/+')
+        while (( ${#email} % 4 )); do email+='='; done
+        email=$(print -rn -- $email | /usr/bin/base64 -d 2>/dev/null | /usr/bin/jq -r .email 2>/dev/null)
+        print -r -- "daemon start email=$email" >> $STUB_LOG; print '{}' ;;
+      *) exit 2 ;;
+    esac
+    exit 0 ;;
+esac
+print -ru2 "stub codex: unsupported: $*"; exit 2

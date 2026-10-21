@@ -1,0 +1,167 @@
+#!/bin/zsh -f
+# auth-swap — keep several Claude Code and Codex logins and switch between them
+# inside the single ~/.claude and ~/.codex. Uses only tools that ship with macOS.
+
+emulate -R zsh
+setopt no_unset pipe_fail extended_glob
+
+typeset -g AS_SELF=${0:A}
+typeset -g AS_ROOT=${AS_SELF:h:h}
+typeset -g AS_VERSION=0.1.0
+typeset -g AS_TESTED_CLAUDE=2.1.305
+typeset -g AS_TESTED_CODEX=0.163.0
+
+source $AS_ROOT/lib/common.zsh
+source $AS_ROOT/lib/vault.zsh
+source $AS_ROOT/lib/claude.zsh
+source $AS_ROOT/lib/codex.zsh
+
+trap as_run_cleanup EXIT
+TRAPINT() { exit 130 }
+TRAPTERM() { exit 143 }
+TRAPHUP() { exit 129 }
+
+as_usage() {
+  print -r -- "auth-swap $AS_VERSION — switch between saved Claude Code / Codex logins
+
+Usage:
+  auth-swap login  claude|codex <name> [-- login flags]   log in to another account (opens the browser)
+  auth-swap save   claude|codex <name>                    save the login that is active right now
+  auth-swap use    claude|codex <name> [--no-save] [--detach]
+                                                          switch to a saved login
+  auth-swap list   [claude|codex] [--json]                show saved logins
+  auth-swap remove claude|codex <name>                    forget a saved login (never revokes)
+  auth-swap doctor                                        check this Mac's setup
+
+Never use /logout in Claude Code or Codex: it cancels the active account's login on the server."
+}
+
+as_provider_arg() { [[ ${1:-} == (claude|codex) ]] || as_die "first argument must be 'claude' or 'codex' (got '${1:-}')" }
+as_name_arg() { as_valid_name ${1:-} || as_die "name must be letters, digits, '.', '_' or '-' (got '${1:-}')" }
+
+as_fmt_ms_date() { # epoch ms -> 2026-10-29 16:28Z
+  [[ ${1:-} == <-> ]] || { print -r -- '-'; return }
+  date -u -r $(( $1 / 1000 )) '+%Y-%m-%d %H:%MZ'
+}
+
+cmd_list() {
+  local provider= json=0 a
+  for a in "$@"; do
+    case $a in
+      claude|codex) provider=$a ;;
+      --json) json=1 ;;
+      *) as_die "list: unknown argument '$a'" ;;
+    esac
+  done
+  vault_init
+  local claude_live= codex_live= live entries
+  [[ $provider == (|claude) ]] && claude_live=$(claude_live_identity)
+  if [[ $provider == (|codex) ]]; then
+    live=$(codex_read_live 2>/dev/null) || live=
+    [[ -n $live ]] && codex_live=$($AS_JQ -r '.identity // ""' <<< "$(codex_meta $live)" 2>/dev/null)
+  fi
+  entries=$($AS_JQ -c --arg cl "$claude_live" --arg xl "$codex_live" \
+    'map(. + {active: ((.provider == "claude" and .identity == $cl) or (.provider == "codex" and .identity == $xl))})
+     | sort_by(.provider, .name)' <<< "$(vault_entries $provider)")
+  if (( json )); then
+    $AS_JQ 'map(del(.identity))' <<< $entries
+    return
+  fi
+  if [[ $($AS_JQ 'length' <<< $entries) == 0 ]]; then
+    print -r -- "No saved logins yet. Save the one you're using now: auth-swap save claude <name>  (or: codex)"
+    return
+  fi
+  local row p n e pl act exp
+  printf '%-7s %-16s %-32s %-10s %s\n' PROVIDER NAME EMAIL PLAN ACTIVE
+  $AS_JQ -r '.[] | [.provider, .name, (.email // "-"), (.plan // "-"), (if .active then "*" else "" end), (.refreshExpiresAt // "" | tostring)] | @tsv' <<< $entries |
+  while IFS=$'\t' read -r p n e pl act exp; do
+    printf '%-7s %-16s %-32s %-10s %s\n' $p $n $e $pl $act
+    [[ $p == claude && -n $exp ]] && printf '        refresh expiry (as recorded by Claude): %s\n' "$(as_fmt_ms_date $exp)"
+  done
+  print -r -- "
+Saved logins that sit unused may expire on the server; if a switch stops working, run auth-swap login again."
+}
+
+cmd_doctor() {
+  local ok=1 t v cfg
+  print -r -- "auth-swap $AS_VERSION on macOS $(sw_vers -productVersion 2>/dev/null)"
+  for t in $AS_JQ $AS_SECURITY /usr/bin/shasum /usr/bin/mktemp /usr/bin/xxd /usr/bin/base64 /usr/bin/stat /usr/bin/perl /usr/bin/awk; do
+    if [[ -x $t ]]; then print -r -- "  ok    $t"; else print -r -- "  MISSING $t"; ok=0; fi
+  done
+  if command -v $AS_CLAUDE >/dev/null; then
+    v=$($AS_CLAUDE --version 2>/dev/null | awk '{print $1}')
+    [[ $v == $AS_TESTED_CLAUDE ]] && print -r -- "  ok    Claude Code $v" \
+      || print -r -- "  note  Claude Code $v (auth-swap was verified against $AS_TESTED_CLAUDE)"
+  else
+    print -r -- "  note  Claude Code not found"
+  fi
+  if command -v $AS_CODEX >/dev/null; then
+    v=$($AS_CODEX --version 2>/dev/null | awk '{print $NF}')
+    [[ $v == $AS_TESTED_CODEX ]] && print -r -- "  ok    Codex $v" \
+      || print -r -- "  note  Codex $v (auth-swap was verified against $AS_TESTED_CODEX)"
+  else
+    print -r -- "  note  Codex not found"
+  fi
+  for v in CLAUDE_CONFIG_DIR CLAUDE_SECURESTORAGE_CONFIG_DIR CLAUDE_CODE_OAUTH_TOKEN CODEX_HOME; do
+    [[ -z ${(P)v:-} ]] || { print -r -- "  BLOCK $v is set (auth-swap manages only ~/.claude and ~/.codex)"; ok=0 }
+  done
+  ( codex_env_check ) 2>/dev/null || { print -r -- "  BLOCK Codex is not in file mode (cli_auth_credentials_store)"; ok=0 }
+  t=$HOME/.local/bin/auth-swap
+  [[ -x $t ]] && print -r -- "  ok    $t" || print -r -- "  note  $t missing (the Claude Code plugin looks for it there)"
+  if $AS_JQ -e '.plugins | keys | any(startswith("auth-swap@"))' $HOME/.claude/plugins/installed_plugins.json >/dev/null 2>&1; then
+    print -r -- "  ok    Claude Code plugin installed"
+  else
+    print -r -- "  note  Claude Code plugin not installed"
+  fi
+  cfg=$HOME/.codex/config.toml
+  if [[ -f $cfg ]] && grep -q '^\[plugins\."auth-swap@' $cfg; then
+    print -r -- "  ok    Codex plugin installed"
+  else
+    print -r -- "  note  Codex plugin not installed"
+  fi
+  (( ok )) && print -r -- "Ready." || { print -r -- "Fix the items above."; return 1 }
+}
+
+main() {
+  local cmd=${1:-help}; (( $# )) && shift
+  case $cmd in
+    help|-h|--help) as_usage; return 0 ;;
+    version|--version) print -r -- $AS_VERSION; return 0 ;;
+    doctor) cmd_doctor; return ;;
+  esac
+  as_require_tools
+  case $cmd in
+    list) cmd_list "$@" ;;
+    login)
+      as_provider_arg ${1:-}; as_name_arg ${2:-}
+      local p=$1 n=$2; shift 2
+      [[ ${1:-} == -- ]] && shift
+      ${p}_login $n "$@" ;;
+    save)
+      as_provider_arg ${1:-}; as_name_arg ${2:-}
+      (( $# == 2 )) || as_die "save takes: claude|codex <name>"
+      ${1}_save $2 ;;
+    use)
+      as_provider_arg ${1:-}; as_name_arg ${2:-}
+      local p=$1 n=$2 no_save=0 detach=0 a; shift 2
+      for a in "$@"; do
+        case $a in
+          --no-save) no_save=1 ;;
+          --detach) detach=1 ;;
+          *) as_die "use: unknown option '$a'" ;;
+        esac
+      done
+      if [[ $p == claude ]]; then
+        (( detach )) && as_die "--detach is for Codex only"
+        claude_use $n $no_save
+      else
+        codex_use $n $no_save $detach
+      fi ;;
+    remove|rm)
+      as_provider_arg ${1:-}; as_name_arg ${2:-}
+      ${1}_remove $2 ;;
+    *) as_usage >&2; return 2 ;;
+  esac
+}
+
+main "$@"

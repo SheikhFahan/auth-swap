@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "auth-swap",
+  "description": "Switch between saved Claude Code and Codex logins without logging out.",
+  "owner": { "name": "auth-swap" },
+  "plugins": [
+    {
+      "name": "auth-swap",
+      "description": "/auth-swap lists your saved logins and switches between them, keeping the same chat.",
+      "source": "./auth-swap",
+      "category": "productivity"
+    }
+  ]
+}
