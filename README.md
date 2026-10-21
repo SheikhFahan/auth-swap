@@ -23,7 +23,16 @@ zsh install.sh
 
 The repository is private: you need access to it and GitHub set up on your Mac (an SSH key, or `gh auth login` and then `gh repo clone SheikhFahan/auth-swap`). On a fresh Mac, `git` asks to install the Xcode Command Line Tools first; auth-swap itself doesn't need them.
 
-To update later: `git pull` in that folder, then `zsh install.sh` again (your saved logins are kept).
+Without git: download the source archive of the latest release from the [Releases](https://github.com/SheikhFahan/auth-swap/releases) page (signed in to GitHub), then in Terminal:
+
+```sh
+cd ~/Downloads
+tar xzf auth-swap-*.tar.gz
+cd auth-swap-*/
+zsh install.sh
+```
+
+To update later: `git pull` in that folder (or download the newer release), then `zsh install.sh` again (your saved logins are kept). Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 This copies auth-swap to `~/.auth-swap/app`, links `~/.local/bin/auth-swap`, and installs the Claude Code plugin and the Codex plugin from local marketplaces. Run `auth-swap doctor` to check everything.
 
@@ -88,3 +97,11 @@ zsh tests/run.zsh                          # CLI tests: fake HOME, fake keychain
 claude plugin validate plugins/claude/auth-swap
 claude plugin test plugins/claude/auth-swap
 ```
+
+## Security
+
+How auth-swap stores your logins, and how to report a problem: [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)
