@@ -1,10 +1,26 @@
-# auth-swap
+```text
+╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮╭───╮
+│ a ││ u ││ t ││ h ││ - ││ s ││ w ││ a ││ p │
+╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯╰───╯
+```
+
+**one Mac · many accounts · zero logouts**
 
 Switch Claude Code and Codex between several accounts without logging out. Open chats keep going on the new account.
 
+```text
+  personal  ▕██████████▏ 100%   rate-limited. mid-thought. classic.
+  work      ▕░░░░░░░░░░▏   0%
+
+  $ auth-swap use claude work
+
+  personal  ▕██████████▏ 100%   resting
+  work      ▕█░░░░░░░░░▏  10%   ◀ you are here. same chat.
+```
+
 macOS only. Plain zsh, nothing to install first.
 
-## Install
+## 01 · install
 
 ```sh
 git clone git@github.com:SheikhFahan/auth-swap.git
@@ -14,7 +30,7 @@ zsh install.sh
 
 Update: `git pull && zsh install.sh`. Check setup: `auth-swap doctor`.
 
-## Use
+## 02 · use
 
 Save the account you're logged into now, then add others (opens the browser):
 
@@ -46,6 +62,8 @@ Claude → work (me@work.example.com). Open chats switch on their next message s
 
 Codex works the same way: replace `claude` with `codex`. After a Codex switch, open Codex windows reconnect within about 2 minutes. If one can't, run `codex resume`.
 
+## 03 · commands
+
 | Command | |
 |---|---|
 | `auth-swap login <claude\|codex> <name>` | add an account |
@@ -55,18 +73,41 @@ Codex works the same way: replace `claude` with `codex`. After a Codex switch, o
 | `auth-swap remove <claude\|codex> <name>` | forget a saved account |
 | `auth-swap doctor` | check setup |
 
-## Don't use /logout
+## 04 · how it works
 
-Logging out in Claude Code or Codex cancels that login on the server, and auth-swap's saved copy stops working too. Use `auth-swap remove` instead.
+```text
+  saved logins
+  ┌──────────┐
+  │ personal │─┐
+  │ work     │─┼── auth-swap use ──▶ live login (every chat reads it)
+  │ team     │─┘
+  └──────────┘
+        ▲
+        └── the account you leave gets saved back first
+```
 
-## Notes
+Saved logins live in the macOS keychain (Claude) and `~/.auth-swap` (Codex). Nothing is sent anywhere. See [SECURITY.md](SECURITY.md).
+
+## !! · don't /logout
+
+```text
+  ╔════════════════════════════════════════════════════╗
+  ║ !! DON'T /logout                                   ║
+  ║                                                    ║
+  ║ it cancels the login on the server, and the        ║
+  ║ copy auth-swap saved goes down with it.            ║
+  ║                                                    ║
+  ║ to forget an account:  auth-swap remove            ║
+  ╚════════════════════════════════════════════════════╝
+```
+
+## ?? · notes
 
 - `save` is for the account you're already logged into. For a new account use `login`. If your browser is signed in to an account you already saved, open the login link in a private window.
 - Needs `/usr/bin/jq` (verified on macOS 26.5; the installer stops if it's missing) and Codex's default file login store. Verified with Claude Code 2.1.305 and Codex 0.163.0; `doctor` warns on other versions.
-- Saved logins live in the macOS keychain (Claude) and `~/.auth-swap` (Codex). Nothing is sent anywhere. See [SECURITY.md](SECURITY.md).
 - Uninstall: `zsh install.sh --uninstall` (keeps saved logins).
 - Tests: `zsh tests/run.zsh`.
 
-## License
+---
 
-[MIT](LICENSE)
+<sub>[MIT](LICENSE) · no tokens were revoked in the making of this switch.</sub>
