@@ -80,21 +80,6 @@ cli_auth_credentials_store = "keyring"' > $HOME/.codex/config.toml
   assert_contains "$out" "CODEX_HOME is set"
 }
 
-test_codex_use_detach_completes_in_background() {
-  codex_live_setup a running
-  as save codex a >/dev/null
-  export STUB_CODEX_AUTH="$(codex_auth b)"
-  as login codex b >/dev/null
-  out=$(as use codex b --detach) || fail "detach failed: $out"
-  assert_contains "$out" "started"
-  for i in {1..50}; do
-    [[ $(jq -r .tokens.refresh_token $HOME/.codex/auth.json) == rt-b ]] && break
-    sleep 0.1
-  done
-  assert_eq "$(jq -r .tokens.refresh_token $HOME/.codex/auth.json)" rt-b "background switch finished"
-  for i in {1..50}; do [[ -e $HOME/.auth-swap/.lock ]] || break; sleep 0.1; done
-}
-
 test_list_empty_message_and_remove() {
   out=$(as list)
   assert_contains "$out" "No saved logins yet"

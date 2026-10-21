@@ -2,6 +2,13 @@
 
 All notable changes to auth-swap are listed here. Versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Removed
+- The Claude Code plugin (`/auth-swap`) and the Codex plugin (`$auth-swap:auth-swap`). auth-swap is now a terminal command only. Running `zsh install.sh` again removes the plugins an earlier install added.
+- `auth-swap use codex --detach`, which only the Codex plugin used.
+- The plugin checks in `auth-swap doctor`.
+
 ## [0.1.0] - 2026-10-21
 
 First release.

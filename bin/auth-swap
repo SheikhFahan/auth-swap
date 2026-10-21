@@ -27,8 +27,7 @@ as_usage() {
 Usage:
   auth-swap login  claude|codex <name> [-- login flags]   log in to another account (opens the browser)
   auth-swap save   claude|codex <name>                    save the login that is active right now
-  auth-swap use    claude|codex <name> [--no-save] [--detach]
-                                                          switch to a saved login
+  auth-swap use    claude|codex <name> [--no-save]          switch to a saved login
   auth-swap list   [claude|codex] [--json]                show saved logins
   auth-swap remove claude|codex <name>                    forget a saved login (never revokes)
   auth-swap doctor                                        check this Mac's setup
@@ -84,7 +83,7 @@ Saved logins that sit unused may expire on the server; if a switch stops working
 }
 
 cmd_doctor() {
-  local ok=1 t v cfg
+  local ok=1 t v
   print -r -- "auth-swap $AS_VERSION on macOS $(sw_vers -productVersion 2>/dev/null)"
   for t in $AS_JQ $AS_SECURITY /usr/bin/shasum /usr/bin/mktemp /usr/bin/xxd /usr/bin/base64 /usr/bin/stat /usr/bin/perl /usr/bin/awk; do
     if [[ -x $t ]]; then print -r -- "  ok    $t"; else print -r -- "  MISSING $t"; ok=0; fi
@@ -108,18 +107,7 @@ cmd_doctor() {
   done
   ( codex_env_check ) 2>/dev/null || { print -r -- "  BLOCK Codex is not in file mode (cli_auth_credentials_store)"; ok=0 }
   t=$HOME/.local/bin/auth-swap
-  [[ -x $t ]] && print -r -- "  ok    $t" || print -r -- "  note  $t missing (the Claude Code plugin looks for it there)"
-  if $AS_JQ -e '.plugins | keys | any(startswith("auth-swap@"))' $HOME/.claude/plugins/installed_plugins.json >/dev/null 2>&1; then
-    print -r -- "  ok    Claude Code plugin installed"
-  else
-    print -r -- "  note  Claude Code plugin not installed"
-  fi
-  cfg=$HOME/.codex/config.toml
-  if [[ -f $cfg ]] && grep -q '^\[plugins\."auth-swap@' $cfg; then
-    print -r -- "  ok    Codex plugin installed"
-  else
-    print -r -- "  note  Codex plugin not installed"
-  fi
+  [[ -x $t ]] && print -r -- "  ok    $t" || print -r -- "  note  $t missing (run: zsh install.sh)"
   (( ok )) && print -r -- "Ready." || { print -r -- "Fix the items above."; return 1 }
 }
 
@@ -144,20 +132,14 @@ main() {
       ${1}_save $2 ;;
     use)
       as_provider_arg ${1:-}; as_name_arg ${2:-}
-      local p=$1 n=$2 no_save=0 detach=0 a; shift 2
+      local p=$1 n=$2 no_save=0 a; shift 2
       for a in "$@"; do
         case $a in
           --no-save) no_save=1 ;;
-          --detach) detach=1 ;;
           *) as_die "use: unknown option '$a'" ;;
         esac
       done
-      if [[ $p == claude ]]; then
-        (( detach )) && as_die "--detach is for Codex only"
-        claude_use $n $no_save
-      else
-        codex_use $n $no_save $detach
-      fi ;;
+      ${p}_use $n $no_save ;;
     remove|rm)
       as_provider_arg ${1:-}; as_name_arg ${2:-}
       ${1}_remove $2 ;;

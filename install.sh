@@ -1,7 +1,7 @@
 #!/bin/zsh -f
 # auth-swap installer — run from the auth-swap folder:
 #   zsh install.sh              install or update
-#   zsh install.sh --uninstall  remove the CLI and plugins (keeps your saved logins)
+#   zsh install.sh --uninstall  remove the command (keeps your saved logins)
 # Uses only tools that ship with macOS.
 emulate -R zsh
 setopt no_unset pipe_fail
@@ -16,61 +16,41 @@ say() { print -r -- "$*" }
 for t in /usr/bin/jq /usr/bin/security /usr/bin/shasum /usr/bin/xxd /usr/bin/base64 /usr/bin/perl /usr/bin/awk /usr/bin/stat; do
   [[ -x $t ]] || die "$t is missing. auth-swap needs the tools that ship with macOS (verified on macOS 26.5)."
 done
-[[ -f $SRC/bin/auth-swap && -d $SRC/plugins ]] || die "run this from the auth-swap folder"
+[[ -f $SRC/bin/auth-swap && -d $SRC/lib ]] || die "run this from the auth-swap folder"
 
-if [[ ${1:-} == --uninstall ]]; then
-  if command -v claude >/dev/null; then
-    claude plugin uninstall auth-swap@auth-swap >/dev/null 2>&1 && say "Removed the Claude Code plugin."
+# auth-swap 0.1.0 installed a Claude Code plugin and a Codex plugin; remove them if present.
+remove_old_plugins() {
+  if command -v claude >/dev/null \
+    && /usr/bin/jq -e '.plugins | keys | any(startswith("auth-swap@"))' $HOME/.claude/plugins/installed_plugins.json >/dev/null 2>&1; then
+    claude plugin uninstall auth-swap@auth-swap >/dev/null 2>&1 && say "Removed the old auth-swap Claude Code plugin."
     claude plugin marketplace remove auth-swap >/dev/null 2>&1
   fi
-  if command -v codex >/dev/null; then
-    codex plugin remove auth-swap@auth-swap >/dev/null 2>&1 && say "Removed the Codex plugin."
+  if command -v codex >/dev/null && grep -q '^\[plugins\."auth-swap@' $HOME/.codex/config.toml 2>/dev/null; then
+    codex plugin remove auth-swap@auth-swap >/dev/null 2>&1 && say "Removed the old auth-swap Codex plugin."
     codex plugin marketplace remove auth-swap >/dev/null 2>&1
   fi
+  return 0
+}
+
+if [[ ${1:-} == --uninstall ]]; then
+  remove_old_plugins
   [[ -L $BIN/auth-swap ]] && rm -f -- $BIN/auth-swap
   rm -rf -- $APP
   say "auth-swap removed. Your saved logins were kept (~/.auth-swap and keychain entries named \"auth-swap\")."
   exit 0
 fi
 
-# 1. Copy the app next to the vault, so moving or deleting this folder can't break the plugins.
+# Copy the app next to the vault, so moving or deleting this folder can't break the command.
 mkdir -p -m 700 ${APP:h}
 rm -rf -- $APP.new && mkdir -p $APP.new || die "cannot write $APP"
-cp -R $SRC/bin $SRC/lib $SRC/plugins $APP.new/ || die "copy failed"
+cp -R $SRC/bin $SRC/lib $APP.new/ || die "copy failed"
 rm -rf -- $APP && mv $APP.new $APP || die "cannot move $APP into place"
 chmod 755 $APP/bin/auth-swap
 mkdir -p $BIN && ln -sf $APP/bin/auth-swap $BIN/auth-swap || die "cannot link $BIN/auth-swap"
 say "Installed the auth-swap command: $BIN/auth-swap"
 [[ :$PATH: == *:$BIN:* ]] || say "Note: $BIN is not on your PATH. Add it to use 'auth-swap' in a terminal."
 
-# 2. Claude Code plugin (/auth-swap).
-if command -v claude >/dev/null; then
-  claude plugin marketplace add $APP/plugins/claude >/dev/null 2>&1 \
-    || claude plugin marketplace update auth-swap >/dev/null 2>&1
-  if claude plugin install auth-swap@auth-swap >/dev/null 2>&1 || claude plugin update auth-swap@auth-swap >/dev/null 2>&1; then
-    say "Installed the Claude Code plugin. In open sessions run /reload-plugins; new sessions have /auth-swap."
-  else
-    say "Could not install the Claude Code plugin automatically. Run:
-  claude plugin marketplace add $APP/plugins/claude
-  claude plugin install auth-swap@auth-swap"
-  fi
-else
-  say "Claude Code not found; skipped its plugin."
-fi
-
-# 3. Codex plugin (skill $auth-swap:auth-swap).
-if command -v codex >/dev/null; then
-  codex plugin marketplace add $APP/plugins/codex >/dev/null 2>&1
-  if codex plugin add auth-swap@auth-swap >/dev/null 2>&1; then
-    say "Installed the Codex plugin. In Codex, type \$auth-swap:auth-swap (or pick it from /skills)."
-  else
-    say "Could not install the Codex plugin automatically. Run:
-  codex plugin marketplace add $APP/plugins/codex
-  codex plugin add auth-swap@auth-swap"
-  fi
-else
-  say "Codex not found; skipped its plugin."
-fi
+remove_old_plugins
 
 say "
 Next: save the login you're using now, then add others:

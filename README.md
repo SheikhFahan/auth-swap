@@ -7,7 +7,7 @@
 ![shell](https://img.shields.io/badge/shell-zsh-green)
 ![license](https://img.shields.io/badge/license-MIT-yellow)
 
-When one account hits its usage limit, run `/auth-swap work` (or `auth-swap use claude work`) and carry on in the same conversation on another account. No logout, no new login, no second config folder.
+When one account hits its usage limit, run `auth-swap use claude work` in a terminal and carry on in the same conversation on another account. No logout, no new login, no second config folder.
 
 ## Contents
 
@@ -28,7 +28,7 @@ When one account hits its usage limit, run `/auth-swap work` (or `auth-swap use 
 
 - **Same chat, different account.** One `~/.claude` and one `~/.codex`, so your chats, `--continue` and `codex resume` work across every account.
 - **Native logins.** `auth-swap login` runs Claude's and Codex's own login in a throwaway folder. Your current login and open chats are never touched.
-- **Works when you're out of usage.** `/auth-swap` in Claude Code runs without asking Claude anything.
+- **Works when you're out of usage.** Switching runs in your terminal, outside Claude Code and Codex, so it never needs the account that ran out.
 - **Never loses tokens.** Before every switch, the current account's latest tokens are saved back.
 - **Manual only.** auth-swap never switches on its own.
 - **Nothing to install first.** Plain zsh using only tools that ship with macOS (`security`, `jq`, `shasum`, …).
@@ -38,7 +38,7 @@ When one account hits its usage limit, run `/auth-swap work` (or `auth-swap use 
 | | Version |
 |---|---|
 | macOS | with `/usr/bin/jq` (verified on 26.5.2; the installer stops if it's missing) |
-| Claude Code | verified with 2.1.305; `/auth-swap` needs 2.1.287 or later |
+| Claude Code | verified with 2.1.305 |
 | Codex CLI | verified with 0.163.0; must use the default file login store (`cli_auth_credentials_store` unset or `"file"`) |
 
 You can use auth-swap with Claude Code only, Codex only, or both. `auth-swap doctor` warns when your versions differ from the verified ones.
@@ -66,11 +66,7 @@ cd auth-swap-*/
 zsh install.sh
 ```
 
-The installer:
-
-1. copies auth-swap to `~/.auth-swap/app` and links `~/.local/bin/auth-swap`;
-2. installs the Claude Code plugin (`/auth-swap`);
-3. installs the Codex plugin (`$auth-swap:auth-swap`).
+The installer copies auth-swap to `~/.auth-swap/app` and links `~/.local/bin/auth-swap`. If `~/.local/bin` isn't on your `PATH`, it tells you.
 
 Check the setup:
 
@@ -79,12 +75,9 @@ $ auth-swap doctor
 auth-swap 0.1.0 on macOS 26.5.2
   ok    /usr/bin/jq
   ...
-  ok    Claude Code plugin installed
-  ok    Codex plugin installed
+  ok    /Users/you/.local/bin/auth-swap
 Ready.
 ```
-
-In Claude Code windows that were already open, run `/reload-plugins` once to get `/auth-swap`.
 
 **Update:** `git pull` (or download the newer release), then run `zsh install.sh` again. Your saved logins are kept. See [CHANGELOG.md](CHANGELOG.md).
 
@@ -150,17 +143,17 @@ Codex → team (me@work.example.com). Open Codex windows reconnect within ~2 min
 
 ## Switching accounts
 
-| From | Claude Code | Codex |
-|---|---|---|
-| Inside Claude Code | `/auth-swap work` | `/auth-swap codex team` |
-| Inside Codex | n/a | `$auth-swap:auth-swap`, then say which login |
-| Any terminal | `auth-swap use claude work` | `auth-swap use codex team` |
+Run switches from any terminal window:
 
-`/auth-swap` on its own lists your saved logins.
+```sh
+auth-swap use claude work    # Claude Code
+auth-swap use codex team     # Codex
+auth-swap list               # what is saved, and what is active
+```
 
 **Claude Code:** every open chat moves to the new account with its next message, once 30 seconds have passed since its last request. The conversation simply continues.
 
-**Codex:** auth-swap restarts Codex's shared background server. Open Codex windows disconnect briefly and reconnect on the new account, within about 2 minutes. Switching from inside Codex asks your permission first, because it changes files outside Codex's sandbox.
+**Codex:** auth-swap restarts Codex's shared background server. Open Codex windows disconnect briefly and reconnect on the new account, within about 2 minutes. Run Codex switches from a terminal rather than asking Codex to run them: a switch first waits for running Codex replies to finish, including the one that would be running the command.
 
 ## Command reference
 
@@ -171,15 +164,10 @@ Codex → team (me@work.example.com). Open Codex windows reconnect within ~2 min
 | `auth-swap use <claude\|codex> <name>` | Switch to a saved account. Saves the current one's latest tokens first. |
 | `auth-swap list [claude\|codex] [--json]` | Show saved accounts. |
 | `auth-swap remove <claude\|codex> <name>` | Forget a saved account. Never logs it out. |
-| `auth-swap doctor` | Check tools, versions, environment and plugins. |
+| `auth-swap doctor` | Check tools, versions and environment. |
 | `auth-swap help`, `auth-swap version` | Show usage or the version. |
 
-`use` options:
-
-| Option | Meaning |
-|---|---|
-| `--no-save` | Switch even though the active account isn't saved. That account is dropped locally (not logged out). |
-| `--detach` | Codex only: run the switch in the background. Used by the Codex skill. |
+`use --no-save` switches even though the active account isn't saved. That account is dropped locally (not logged out).
 
 Names may contain letters, digits, `.`, `_` and `-`.
 
@@ -203,8 +191,6 @@ auth-swap: the Claude account you're logged into now (me@example.com) is already
 
 **A Codex window says the connection could not be restored.** Run `codex resume` to reopen the chat on the new account.
 
-**`/auth-swap` is missing in Claude Code.** Run `/reload-plugins` in that window, or start a new session.
-
 **`doctor` reports `BLOCK … is set`.** auth-swap manages only the default `~/.claude` and `~/.codex`. Unset `CLAUDE_CONFIG_DIR`, `CLAUDE_SECURESTORAGE_CONFIG_DIR`, `CLAUDE_CODE_OAUTH_TOKEN` or `CODEX_HOME` in the shell you use.
 
 ## How it works
@@ -221,7 +207,7 @@ auth-swap: the Claude account you're logged into now (me@example.com) is already
 
 - One active account per tool at a time, shared by all open chats of that tool.
 - A Codex window running without the shared daemon (`--no-daemon`) can't be switched. Restart it after switching.
-- A Codex daemon started by auth-swap keeps the environment of whatever started it. Switch Codex from a terminal or from Codex itself when you can.
+- The Codex daemon that auth-swap restarts keeps the environment of the shell you ran `auth-swap` from (PATH, proxy settings and so on).
 - Saved logins left unused for a long time may expire on the server. If a switch stops working, run `auth-swap login` again. `list` shows the refresh-expiry date Claude recorded.
 - Some behaviour is still being confirmed on real accounts; see [`docs/research/spikes.md`](docs/research/spikes.md).
 
@@ -231,14 +217,12 @@ auth-swap: the Claude account you're logged into now (me@example.com) is already
 zsh install.sh --uninstall
 ```
 
-This removes the command and both plugins. Your saved logins stay; run `auth-swap remove` for each one first if you want them gone.
+This removes the command. Your saved logins stay; run `auth-swap remove` for each one first if you want them gone.
 
 ## Development
 
 ```sh
-zsh tests/run.zsh                                # CLI tests: fake HOME, fake keychain, fake claude/codex
-claude plugin validate plugins/claude/auth-swap  # Claude Code plugin manifest and module
-claude plugin test plugins/claude/auth-swap      # Claude Code plugin tests
+zsh tests/run.zsh    # fake HOME, fake keychain, fake claude/codex
 ```
 
 The tests never touch your real keychain, `~/.claude` or `~/.codex`.
@@ -247,8 +231,6 @@ The tests never touch your real keychain, `~/.claude` or `~/.codex`.
 |---|---|
 | `bin/auth-swap` | CLI entry point |
 | `lib/` | shared helpers, vault, Claude and Codex flows |
-| `plugins/claude/` | Claude Code plugin (`/auth-swap`) and its marketplace |
-| `plugins/codex/` | Codex plugin (`$auth-swap:auth-swap` skill) and its marketplace |
 | `tests/` | test runner, stubs for `security`, `claude` and `codex` |
 | `docs/research/` | verified behaviour of Claude Code and Codex, with citations |
 

@@ -8,7 +8,7 @@ Machine: macOS 26.5.2 (25F84), Claude Code 2.1.305, Codex 0.163.0.
 | S2 | Running Claude chat picks up a swapped keychain login on its next message after ≥30 s, with no re-login prompt, same transcript | pending |
 | S3 | `CODEX_HOME=<tmp> codex login` writes only `<tmp>/auth.json`; live `~/.codex/auth.json` untouched | **passed 2026-10-21** |
 | S4 | `auth-swap use codex B` from a terminal: open TUI reconnects, `/status` shows B, next turn served | **passed 2026-10-21** |
-| S5 | Codex skill runs `auth-swap use codex B --detach` (escalated) in-chat and the switch completes | pending |
+| S5 | Codex skill runs `auth-swap use codex B --detach` (escalated) in-chat and the switch completes | dropped (plugins removed) |
 | S6 | Keychain write/read via `security` | **passed 2026-10-21** |
 
 ## S6 — keychain I/O (passed)

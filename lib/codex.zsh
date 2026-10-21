@@ -85,20 +85,11 @@ codex_login() { # <name> [codex login flags...]
   print -r -- "Saved Codex login '$name' ($($AS_JQ -r .email <<< "$(codex_meta $auth)")). Switch with: auth-swap use codex $name"
 }
 
-codex_use() { # <name> <no_save:0|1> <detach:0|1>
-  local name=$1 no_save=$2 detach=$3 target live live_meta live_name
+codex_use() { # <name> <no_save:0|1>
+  local name=$1 no_save=$2 target live live_meta live_name
   codex_env_check
   vault_init
   [[ -n $(vault_entry codex $name) ]] || as_die "no saved Codex login named '$name' (see: auth-swap list codex)"
-
-  if (( detach )); then
-    # New session (setsid) so the switch survives the daemon shutting down the caller.
-    local -a args=(use codex $name); (( no_save )) && args+=(--no-save)
-    /usr/bin/perl -MPOSIX -e 'POSIX::setsid(); exec @ARGV or die "exec: $!"' -- $AS_SELF $args \
-      </dev/null >>$AS_HOME/detach.log 2>&1 &!
-    print -r -- "Codex switch to '$name' started. Open Codex windows reconnect within ~2 min. Check with: auth-swap list codex (log: $AS_HOME/detach.log)"
-    return 0
-  fi
 
   vault_lock
   target=$(vault_secret_get codex $name) || as_die "the saved login '$name' is missing ($AS_HOME/codex/$name.auth.json)"
