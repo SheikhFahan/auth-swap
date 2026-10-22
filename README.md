@@ -72,6 +72,7 @@ Codex works the same way: replace `claude` with `codex`. After a Codex switch, o
 | `auth-swap list` | show saved accounts |
 | `auth-swap remove <claude\|codex> <name>` | forget a saved account |
 | `auth-swap doctor` | check setup |
+| `auth-swap uninstall` | remove auth-swap (keeps saved logins) |
 
 ## 04 · how it works
 
@@ -105,7 +106,7 @@ Saved logins live in the macOS keychain (Claude) and `~/.auth-swap` (Codex). Not
 
 - `save` is for the account you're already logged into. For a new account use `login`. If your browser is signed in to an account you already saved, open the login link in a private window.
 - Needs `/usr/bin/jq` (verified on macOS 26.5; the installer stops if it's missing) and Codex's default file login store. Verified with Claude Code 2.1.305 and Codex 0.163.0; `doctor` warns on other versions.
-- Uninstall: `zsh install.sh --uninstall` (keeps saved logins).
+- Uninstall: `auth-swap uninstall`, from any folder (keeps saved logins).
 - Tests: `zsh tests/run.zsh`.
 
 ---

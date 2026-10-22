@@ -31,6 +31,7 @@ Usage:
   auth-swap list   [claude|codex] [--json]                show saved logins
   auth-swap remove claude|codex <name>                    forget a saved login (never revokes)
   auth-swap doctor                                        check this Mac's setup
+  auth-swap uninstall                                     remove auth-swap (keeps saved logins)
 
 Never use /logout in Claude Code or Codex: it cancels the active account's login on the server."
 }
@@ -111,12 +112,20 @@ cmd_doctor() {
   (( ok )) && print -r -- "Ready." || { print -r -- "Fix the items above."; return 1 }
 }
 
+cmd_uninstall() { # same as `zsh install.sh --uninstall`: removes the command, keeps saved logins
+  local app=$AS_HOME/app link=$HOME/.local/bin/auth-swap
+  [[ -L $link && ${${link:A}:h:h} == ${app:A} ]] && rm -f -- $link
+  [[ -d $app ]] && rm -rf -- $app
+  print -r -- "auth-swap removed. Your saved logins were kept (~/.auth-swap and keychain entries named \"auth-swap\")."
+}
+
 main() {
   local cmd=${1:-help}; (( $# )) && shift
   case $cmd in
     help|-h|--help) as_usage; return 0 ;;
     version|--version) print -r -- $AS_VERSION; return 0 ;;
     doctor) cmd_doctor; return ;;
+    uninstall) cmd_uninstall; return ;;
   esac
   as_require_tools
   case $cmd in

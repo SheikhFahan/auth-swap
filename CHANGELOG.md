@@ -4,6 +4,9 @@ All notable changes to auth-swap are listed here. Versions follow [Semantic Vers
 
 ## [Unreleased]
 
+### Added
+- `auth-swap uninstall`: removes the command from any folder, without finding `install.sh`. Saved logins are kept.
+
 ### Removed
 - The Claude Code plugin (`/auth-swap`) and the Codex plugin (`$auth-swap:auth-swap`). auth-swap is now a terminal command only. Running `zsh install.sh` again removes the plugins an earlier install added.
 - `auth-swap use codex --detach`, which only the Codex plugin used.
